@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ISS Student Zone - Indian School Sohar</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;height:100vh;overflow:hidden;font:12px Tahoma,Verdana,sans-serif;background:linear-gradient(#2f6ad0,#8bbcf2 55%,#5fa632 55%,#3a7a1c)}
+#desk{position:fixed;inset:0 0 34px 0;display:flex;justify-content:center;align-items:center;padding:8px}
+.win{width:min(940px,100%);height:100%;max-height:660px;background:#ece9d8;border:3px solid #0a46d0;border-radius:8px 8px 0 0;display:flex;flex-direction:column;box-shadow:4px 6px 14px #0006}
+.win.small{width:min(400px,100%);height:auto;max-height:100%;overflow:auto}
+.tb{background:linear-gradient(#0a5bd8,#3d8df5 15%,#0a5bd8 80%,#0846b8);color:#fff;font-weight:bold;font-size:13px;padding:4px 6px;display:flex;align-items:center;gap:6px;text-shadow:1px 1px #0008;border-radius:5px 5px 0 0}
+.tb span{flex:1}.tb i{width:20px;height:20px;border:1px solid #fff;border-radius:3px;background:#2f6be0;text-align:center;font-style:normal;line-height:17px}
+.tb i:last-child{background:#d5502e}
+.mb{background:#ece9d8;border-bottom:1px solid #aca899;padding:2px 8px;font-size:11px}
+.body{flex:1;display:flex;min-height:0}
+.side{width:170px;background:linear-gradient(#7ba2e7,#6375d6);padding:10px;color:#fff;overflow:auto}
+.side h4{margin:0 0 6px;background:linear-gradient(90deg,#fff,#c6d3f7);color:#1c3c9c;padding:4px 6px;border-radius:4px 4px 0 0}
+.side a{display:block;color:#fff;font-weight:bold;padding:6px 4px;cursor:pointer;text-decoration:none;border-radius:3px}
+.side a:hover,.side a.on{background:#fff3;text-decoration:underline}
+.main{flex:1;background:#fff;overflow:auto;padding:12px;border:2px inset #ece9d8}
+h2{margin:0 0 8px;color:#0a3fa8;font-size:18px;border-bottom:2px solid #ffbf3b}
+input,select,textarea,button{font:12px Tahoma;margin:2px 0}
+input,select,textarea{border:1px solid #7f9db9;padding:4px;width:100%}
+button{border:1px solid #003c74;border-radius:3px;padding:4px 12px;background:linear-gradient(#fff,#ece9d8 85%,#d6d0c5);cursor:pointer}
+button:hover{box-shadow:inset 0 0 0 2px #f8b330}
+.card{border:2px outset #ece9d8;background:#fffff0;padding:8px;margin:8px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.grid .card{margin:0}.grid img{width:100%;height:120px;object-fit:cover;border:1px solid #999}
+.price{color:#c00;font-weight:bold}
+.tag{background:#316ac5;color:#fff;padding:1px 6px;border-radius:8px;font-size:10px}
+#msgs{height:260px;overflow:auto;background:#fff;border:2px inset #ece9d8;padding:6px;margin-bottom:4px}
+.row{display:flex;gap:6px}.row>*{flex:1}.row button{flex:0}
+.on-dot{color:#2a9d2a}
+marquee{background:#000;color:#0f0;font-family:monospace;padding:2px}
+.tray{position:fixed;left:0;right:0;bottom:0;height:34px;background:linear-gradient(#245edb,#3f8cf3 10%,#245edb 90%,#1941a5);display:flex;align-items:center;color:#fff}
+.start{height:34px;padding:0 22px 0 12px;border:0;border-radius:0 14px 14px 0;background:linear-gradient(#3c9a3c,#5ec85e 15%,#2f8a2f 85%);color:#fff;font:italic bold 17px Tahoma;text-shadow:1px 1px #0008;box-shadow:2px 0 4px #0006}
+.clock{margin-left:auto;background:#0f8ae8;padding:8px 14px;border-left:1px solid #0a3fa8}
+.task{margin:0 6px;background:#3c81f3;padding:5px 14px;border-radius:4px;max-width:200px;overflow:hidden;white-space:nowrap}
+.err{color:#c00;font-weight:bold}
+@media(max-width:640px){.side{width:86px;padding:4px}.side a{font-size:10px}.side h4{display:none}}
+</style></head><body>
+<div id="desk"></div>
+<div class="tray"><button class="start" onclick="alert('ISS Student Zone v0.1\nMade by students, for students!')">&#10084; start</button><div class="task" id="task">ISS Student Zone</div><div class="clock" id="clock"></div></div>
+<script>
+/* ===== Tiny helpers ===== */
+const $=s=>document.querySelector(s);
+const ls=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}};
+const sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){alert('Storage full - try a smaller photo.')}};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const val=id=>($('#'+id)||{value:''}).value.trim();
+let me=ls('me',null), tab='home', mode='signin', err='', room='General';
+const BAD=['fuck','shit','bitch','sex']; // starter word filter - extend it!
+const clean=t=>BAD.reduce((s,w)=>s.replace(new RegExp(w,'gi'),'***'),t);
+
+/* ===== Auth (DEMO: stored in this browser only. Replace with Firebase/Supabase auth) ===== */
+function norm(id){id=id.trim().toLowerCase();if(id.includes('@'))return /^\S+@\S+\.\S+$/.test(id)?id:null;
+ const d=id.replace(/\D/g,'');return d.length>=8&&d.length<=13?'+'+(d.length===8?'968'+d:d):null}
+function auth(){
+ const id=norm(val('id')),pw=val('pw'),users=ls('users',{});
+ if(!id)return fail('Enter a valid email or phone number (Oman: 8 digits).');
+ if(pw.length<6)return fail('Password must be 6+ characters.');
+ if(mode==='signup'){
+  if(users[id])return fail('Account exists - please sign in.');
+  const name=val('name'),cls=val('cls');if(!name)return fail('Please enter your name.');
+  users[id]={name,cls,pw:btoa(pw)};sv('users',users);
+ }else if(!users[id]||users[id].pw!==btoa(pw))return fail('Wrong details. New here? Click Sign up.');
+ me={id,name:users[id].name,cls:users[id].cls};sv('me',me);err='';tab='home';render();
+}
+function fail(m){err=m;render();return 0}
+function logout(){localStorage.removeItem('me');me=null;render()}
+
+/* ===== Render ===== */
+function render(){
+ if(!me){$('#desk').innerHTML=`<div class="win small"><div class="tb"><span>Welcome to ISS Student Zone</span><i>_</i><i>X</i></div><div class="main" style="padding:16px">
+ <h2>${mode==='signin'?'Sign In':'Create Account'}</h2>
+ <p>&#127979; For students of Indian School Sohar</p>
+ ${mode==='signup'?'<label>Your name</label><input id="name"><label>Class</label><select id="cls">'+[5,6,7,8,9,10,11,12].map(c=>'<option>Class '+c+'</option>').join('')+'</select>':''}
+ <label>Email or phone number</label><input id="id" placeholder="you@mail.com or 9XXXXXXX">
+ <label>Password</label><input id="pw" type="password">
+ <p class="err">${err}</p>
+ <button onclick="auth()">${mode==='signin'?'Sign In':'Sign Up'}</button>
+ <button onclick="mode='${mode==='signin'?'signup':'signin'}';err='';render()">${mode==='signin'?'New? Sign up':'Have account? Sign in'}</button>
+ <p style="font-size:10px;color:#666">Demo mode: accounts live only in your browser.</p></div></div>`;return}
+ const nav=[['home','&#127968; Home'],['market','&#128722; Marketplace'],['chat','&#128172; Chat Rooms'],['exam','&#128221; Exam Talk'],['hw','&#128218; Homework Help']];
+ $('#desk').innerHTML=`<div class="win"><div class="tb"><span>ISS Student Zone - ${nav.find(n=>n[0]===tab)[1].replace(/&#\d+;/,'')}</span><i>_</i><i>&#9633;</i><i>X</i></div>
+ <div class="mb">File &nbsp; Edit &nbsp; View &nbsp; Favorites &nbsp; Help</div>
+ <div class="body"><div class="side"><h4>Go to</h4>${nav.map(n=>`<a class="${tab===n[0]?'on':''}" onclick="go('${n[0]}')">${n[1]}</a>`).join('')}
+ <h4 style="margin-top:14px">You</h4><div style="padding:4px">&#128100; ${esc(me.name)}<br>${esc(me.cls||'')}<br><br><button onclick="logout()">Sign out</button></div></div>
+ <div class="main" id="main"></div></div></div>`;
+ $('#task').textContent='ISS Student Zone';view();
+}
+function go(t){tab=t;render()}
+function view(){const m=$('#main');
+ if(tab==='home')m.innerHTML=`<marquee>*** Welcome ${esc(me.name)}! Buy, sell, chat and study together ***</marquee>
+ <h2>Welcome to ISS Student Zone!</h2><p>&#127760; Best viewed in Internet Explorer 6 at 800x600 (just kidding, anything works).</p>
+ <div class="card"><b>&#128722; Marketplace</b> - sell your old books, uniforms and gadgets.<br><b>&#128172; Chat</b> - talk to classmates who are online.<br><b>&#128221; Exam Talk</b> - share tips and doubts.<br><b>&#128218; Homework Help</b> - ask and answer.</div>
+ <p>&#128679; <b>Be kind &amp; be safe:</b> no bullying, never share your address or passwords, and do swaps only at school.</p>
+ <p>You are visitor #<b>${hit()}</b> &#128187;</p>`;
+ if(tab==='market')market(m);if(tab==='chat')chat(m);if(tab==='exam'||tab==='hw')board(m)}
+function hit(){const n=ls('hits',1000)+1;sv('hits',n);return String(n).padStart(6,'0')}
+
+/* ===== Marketplace ===== */
+let photo='';
+function market(m){const items=ls('items',[]);
+ m.innerHTML=`<h2>Student Marketplace</h2><div class="card"><b>&#128247; Sell something</b>
+ <input id="t" placeholder="What are you selling?"><div class="row"><input id="p" type="number" min="0" step="0.1" placeholder="Price (OMR)"><input id="f" type="file" accept="image/*" onchange="pic(this.files[0])"></div>
+ <textarea id="d" rows="2" placeholder="Condition, class, details..."></textarea><button onclick="sell()">Post item</button> <span id="pv"></span></div>
+ <div class="grid">${items.map((x,i)=>`<div class="card">${x.img?`<img src="${x.img}">`:''}<b>${esc(x.t)}</b><div class="price">OMR ${esc(x.p||'?')}</div><small>${esc(x.d)}</small><br><span class="tag">${esc(x.u)} ${esc(x.c||'')}</span><br>
+ <button onclick="room='Market Talk';go('chat')">Chat</button>${x.id===me.id?`<button onclick="del(${i})">Remove</button>`:''}</div>`).join('')||'<p>Nothing yet - be the first to sell!</p>'}</div>`}
+function pic(file){if(!file)return;const r=new FileReader();r.onload=e=>{const i=new Image();i.onload=()=>{const s=Math.min(1,400/i.width),c=document.createElement('canvas');c.width=i.width*s;c.height=i.height*s;c.getContext('2d').drawImage(i,0,0,c.width,c.height);photo=c.toDataURL('image/jpeg',.7);$('#pv').textContent='Photo ready \u2714'};i.src=e.target.result};r.readAsDataURL(file)}
+function sell(){const t=val('t');if(!t)return alert('Add a title!');const a=ls('items',[]);a.unshift({t:clean(t),p:val('p'),d:clean(val('d')),img:photo,u:me.name,c:me.cls,id:me.id});sv('items',a);photo='';view()}
+function del(i){const a=ls('items',[]);a.splice(i,1);sv('items',a);view()}
+
+/* ===== Chat ===== */
+function chat(m){
+ m.innerHTML=`<h2>Chat Rooms</h2><div class="row" style="margin-bottom:6px"><select id="rm" onchange="room=this.value;refreshChat()">${['General','Market Talk','Class Chat','Study Hall'].map(r=>`<option ${r===room?'selected':''}>${r}</option>`).join('')}</select></div>
+ <div id="msgs"></div><div class="row"><input id="cm" placeholder="Type a message..." onkeydown="if(event.key==='Enter')send()"><button onclick="send()">Send</button></div>
+ <div class="card"><b>&#128994; Online now</b><div id="on"></div></div><small>Demo: chat syncs between tabs of this browser. Real online chat needs the Firebase setup in the guide.</small>`;refreshChat()}
+function beat(){if(!me)return;const p=ls('presence',{});p[me.id]={n:me.name,t:Date.now()};sv('presence',p)}
+function refreshChat(){if(tab!=='chat'||!$('#msgs'))return;const a=ls('chat_'+room,[]),b=$('#msgs'),bottom=b.scrollTop+b.clientHeight>=b.scrollHeight-20;
+ b.innerHTML=a.map(x=>`<div><b style="color:${x.id===me.id?'#0a3fa8':'#a03'}">${esc(x.u)}:</b> ${esc(x.m)}</div>`).join('')||'<i>No messages yet. Say hi!</i>';if(bottom)b.scrollTop=b.scrollHeight;
+ const p=ls('presence',{});$('#on').innerHTML=Object.values(p).filter(x=>Date.now()-x.t<30000).map(x=>`<span class="on-dot">&#9679;</span> ${esc(x.n)}`).join('<br>')}
+function send(){const t=val('cm');if(!t)return;const a=ls('chat_'+room,[]);a.push({u:me.name,id:me.id,m:clean(t)});sv('chat_'+room,a.slice(-100));$('#cm').value='';refreshChat()}
+
+/* ===== Boards (Exam Talk + Homework Help) ===== */
+function board(m){const k='b_'+tab,a=ls(k,[]),ex=tab==='exam';
+ m.innerHTML=`<h2>${ex?'Exam Discussion':'Homework Help'}</h2><div class="card"><b>${ex?'Share a tip or ask a doubt':'Ask a homework question'}</b>
+ <div class="row"><select id="sb">${['Maths','Science','English','Hindi','Malayalam','Social','Computer','Other'].map(s=>`<option>${s}</option>`).join('')}</select></div>
+ <textarea id="tx" rows="2" placeholder="Type here..."></textarea><button onclick="post()">Post</button></div>
+ ${a.map((x,i)=>`<div class="card"><span class="tag">${esc(x.s)}</span> <b>${esc(x.u)}</b> <small>${esc(x.c||'')}</small><p>${esc(x.t)}</p>
+ ${x.r.map(r=>`<div style="margin-left:14px;border-left:3px solid #7ba2e7;padding-left:6px"><b>${esc(r.u)}:</b> ${esc(r.t)}</div>`).join('')}
+ <div class="row"><input id="r${i}" placeholder="Reply..."><button onclick="reply(${i})">Reply</button></div></div>`).join('')||'<p>No posts yet.</p>'}`}
+function post(){const t=val('tx');if(!t)return;const k='b_'+tab,a=ls(k,[]);a.unshift({u:me.name,c:me.cls,s:val('sb'),t:clean(t),r:[]});sv(k,a);view()}
+function reply(i){const t=val('r'+i);if(!t)return;const k='b_'+tab,a=ls(k,[]);a[i].r.push({u:me.name,t:clean(t)});sv(k,a);view()}
+
+/* ===== Boot ===== */
+setInterval(()=>{$('#clock').textContent=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});beat();refreshChat()},3000);
+window.addEventListener('storage',refreshChat);
+$('#clock').textContent=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+render();beat();
+</script></body></html>
