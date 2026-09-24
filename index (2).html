@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ISS Student Zone - Indian School Sohar</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;height:100vh;overflow:hidden;font:12px Tahoma,Verdana,sans-serif;background:linear-gradient(#2f6ad0,#8bbcf2 55%,#5fa632 55%,#3a7a1c)}
+#desk{position:fixed;inset:0 0 34px 0;overflow:hidden}
+.ics{position:absolute;left:4px;top:4px}
+.ic{width:84px;text-align:center;color:#fff;text-shadow:1px 1px #000;margin:6px 0;cursor:pointer;padding:4px;border-radius:3px}
+.ic:hover{background:#316ac588}.ic b{display:block;font-size:30px}
+.win{position:absolute;background:#ece9d8;border:3px solid #0a46d0;border-radius:8px 8px 0 0;display:flex;flex-direction:column;box-shadow:4px 6px 14px #0006}
+.win.mx{left:0!important;top:0!important;width:100%!important;height:100%!important;border-radius:0}
+.tb{background:linear-gradient(#0a5bd8,#3d8df5 15%,#0a5bd8 80%,#0846b8);color:#fff;font-weight:bold;font-size:13px;padding:4px 6px;display:flex;align-items:center;gap:5px;text-shadow:1px 1px #0008;border-radius:5px 5px 0 0;cursor:move;touch-action:none;user-select:none}
+.tb span{flex:1}.tb i{width:20px;height:20px;border:1px solid #fff;border-radius:3px;background:#2f6be0;text-align:center;font-style:normal;line-height:17px;cursor:pointer}
+.tb i:last-child{background:#d5502e}
+.wb{flex:1;background:#fff;overflow:auto;padding:10px;border:2px inset #ece9d8;min-height:0}
+h2{margin:0 0 8px;color:#0a3fa8;font-size:17px;border-bottom:2px solid #ffbf3b}
+input,select,textarea,button{font:12px Tahoma;margin:2px 0}
+input,select,textarea{border:1px solid #7f9db9;padding:4px;width:100%}
+button{border:1px solid #003c74;border-radius:3px;padding:4px 12px;background:linear-gradient(#fff,#ece9d8 85%,#d6d0c5);cursor:pointer}
+button:hover{box-shadow:inset 0 0 0 2px #f8b330}
+.card{border:2px outset #ece9d8;background:#fffff0;padding:8px;margin:8px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.grid .card{margin:0}.grid img{width:100%;height:110px;object-fit:cover;border:1px solid #999}
+.price{color:#c00;font-weight:bold}
+.tag{background:#316ac5;color:#fff;padding:1px 6px;border-radius:8px;font-size:10px}
+.msgs{height:220px;overflow:auto;background:#fff;border:2px inset #ece9d8;padding:6px;margin:6px 0 4px}
+.row{display:flex;gap:6px}.row>*{flex:1}.row button{flex:0}
+.dot{color:#2a9d2a}.rep{margin-left:12px;border-left:3px solid #7ba2e7;padding-left:6px}
+a[data-del],a[data-dp]{color:#c00;cursor:pointer}
+.err{color:#c00;font-weight:bold}
+marquee{background:#000;color:#0f0;font-family:monospace;padding:2px}
+.tray{position:fixed;left:0;right:0;bottom:0;height:34px;background:linear-gradient(#245edb,#3f8cf3 10%,#245edb 90%,#1941a5);display:flex;align-items:center;color:#fff;z-index:9999}
+#st{height:34px;padding:0 22px 0 12px;border:0;border-radius:0 14px 14px 0;background:linear-gradient(#3c9a3c,#5ec85e 15%,#2f8a2f 85%);color:#fff;font:italic bold 17px Tahoma;text-shadow:1px 1px #0008;margin:0}
+#tasks{display:flex;flex:1;overflow:hidden}
+.task{margin:0 3px;background:#3c81f3;padding:5px 10px;border-radius:4px;white-space:nowrap;cursor:pointer;max-width:150px;overflow:hidden}
+.task.on{background:#1e52b7;box-shadow:inset 1px 1px 4px #0008}
+#on,#ck{padding:8px 10px;background:#0f8ae8}
+#sm{display:none;position:fixed;left:0;bottom:34px;width:200px;background:#fff;border:2px solid #245edb;border-radius:8px 8px 0 0;z-index:9999;overflow:hidden}
+#sm div{padding:8px 12px;cursor:pointer}#sm div:hover{background:#316ac5;color:#fff}
+#sm h5{margin:0;padding:8px;background:#245edb;color:#fff;font-size:13px}
+@media(max-width:700px){.win{left:0!important;top:0!important;width:100%!important;height:100%!important;border-radius:0}.tb{cursor:default}#on{display:none}}
+</style></head><body>
+<div id="desk"></div>
+<div id="sm"></div>
+<div class="tray"><button id="st">&#10084; start</button><div id="tasks"></div><span id="on"></span><span id="ck"></span></div>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,onAuthStateChanged,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getFirestore,collection,doc,setDoc,getDoc,addDoc,deleteDoc,updateDoc,onSnapshot,query,orderBy,limit,serverTimestamp,arrayUnion} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* ====== 1. PASTE YOUR FIREBASE CONFIG HERE (Firebase console > Project settings > Your apps) ====== */
+const firebaseConfig={apiKey:"AIzaSyBKdWTHZMQZ4aeXyfyyLq6kCxVLLGV2WV8",authDomain:"web-app-5d29e.firebaseapp.com",projectId:"web-app-5d29e",appId:"1:449549053348:web:854ac56e71328198102531"};
+/* ================================================================================================= */
+
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clean=t=>['fuck','shit','bitch','sex'].reduce((s,w)=>s.replace(new RegExp(w,'gi'),'***'),t); // extend this list!
+const okImg=s=>/^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(s||'');
+const D={home:['\u{1F3E0}','Home'],market:['\u{1F6D2}','Marketplace'],chat:['\u{1F4AC}','Chat Rooms'],exam:['\u{1F4DD}','Exam Talk'],hw:['\u{1F4DA}','Homework Help']};
+let auth,db,me=null,mode='signin',err='',online=[],W={},act=null,z=10,pUn=null,beatT=null;
+
+setInterval(()=>$('#ck').textContent=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),1000);
+if(firebaseConfig.apiKey.startsWith('PASTE')){
+ $('#desk').innerHTML='<div class="win" style="left:20px;top:20px;width:min(420px,95vw)"><div class="tb"><span>Setup needed</span></div><div class="wb"><h2>Almost there!</h2>Open <b>index.html</b> and paste your Firebase config where it says <b>PASTE YOUR FIREBASE CONFIG HERE</b>.</div></div>';
+}else{auth=getAuth(initializeApp(firebaseConfig));db=getFirestore();boot()}
+
+/* ---------- Auth ---------- */
+const toEmail=id=>{id=id.trim().toLowerCase();if(id.includes('@'))return /^\S+@\S+\.\S+$/.test(id)?id:null;const d=id.replace(/\D/g,'');if(d.length<8||d.length>13)return null;return (d.length===8?'968'+d:d)+'@phone.issz.app'};
+const MSG={'auth/email-already-in-use':'Account already exists - please sign in.','auth/invalid-credential':'Wrong details. New here? Click Sign up.','auth/weak-password':'Password needs 6+ characters.','auth/too-many-requests':'Too many tries. Wait a bit.','auth/network-request-failed':'No internet connection.'};
+function authView(){
+ $('#desk').innerHTML=`<div class="win" style="left:50%;top:50%;transform:translate(-50%,-50%);width:min(400px,96vw);height:auto"><div class="tb"><span>Welcome to ISS Student Zone</span></div><div class="wb" style="padding:16px">
+ <h2>${mode==='signin'?'Sign In':'Create Account'}</h2><p>&#127979; For students of Indian School Sohar</p>
+ ${mode==='signup'?'<label>Your name</label><input id="nm" maxlength="30"><label>Class</label><select id="cl">'+[5,6,7,8,9,10,11,12].map(c=>'<option>Class '+c+'</option>').join('')+'</select>':''}
+ <label>Email or phone number</label><input id="id" placeholder="you@mail.com or 9XXXXXXX"><label>Password</label><input id="pw" type="password">
+ <p class="err">${err}</p><button id="go">${mode==='signin'?'Sign In':'Sign Up'}</button> <button id="sw">${mode==='signin'?'New? Sign up':'Have account? Sign in'}</button></div></div>`;
+ $('#sm').innerHTML='';$('#tasks').innerHTML='';$('#on').textContent='';
+ $('#sw').onclick=()=>{mode=mode==='signin'?'signup':'signin';err='';authView()};
+ $('#go').onclick=async()=>{const e=toEmail($('#id').value),pw=$('#pw').value;
+  const bad=m=>{err=m;$('.err').textContent=m};
+  if(!e)return bad('Enter a valid email or phone number (Oman: 8 digits).');
+  if(pw.length<6)return bad('Password needs 6+ characters.');
+  try{if(mode==='signup'){const n=$('#nm').value.trim();if(!n)return bad('Please enter your name.');
+    sessionStorage.setItem('np',JSON.stringify({n:clean(n),c:$('#cl').value}));await createUserWithEmailAndPassword(auth,e,pw)}
+   else await signInWithEmailAndPassword(auth,e,pw)}catch(x){bad(MSG[x.code]||'Error: '+x.code)}}
+}
+function boot(){onAuthStateChanged(auth,async u=>{
+ if(!u){me=null;closeAll();authView();return}
+ const r=doc(db,'users',u.uid);let s=await getDoc(r);
+ if(!s.exists()){const np=JSON.parse(sessionStorage.getItem('np')||'{}');await setDoc(r,{name:np.n||'Student',cls:np.c||'',role:'student',ts:serverTimestamp()});s=await getDoc(r)}
+ me={uid:u.uid,...s.data()};desktop()})}
+function closeAll(){Object.keys(W).forEach(closeW);pUn&&pUn();clearInterval(beatT)}
+
+/* ---------- Desktop + window manager ---------- */
+function desktop(){
+ $('#desk').innerHTML='<div class="ics">'+Object.keys(D).map(k=>`<div class="ic" data-o="${k}"><b>${D[k][0]}</b>${D[k][1]}</div>`).join('')+'</div>';
+ $('#desk').onclick=e=>{const k=e.target.closest('[data-o]');k&&openWin(k.dataset.o)};
+ $('#sm').innerHTML=`<h5>&#128100; ${esc(me.name)}</h5>`+Object.keys(D).map(k=>`<div data-o="${k}">${D[k][0]} ${D[k][1]}</div>`).join('')+'<div data-out>&#128682; Sign out</div>';
+ $('#sm').onclick=async e=>{const k=e.target.closest('[data-o]');if(k)openWin(k.dataset.o);if(e.target.closest('[data-out]')){try{await setDoc(doc(db,'presence',me.uid),{n:me.name,t:0})}catch(x){}signOut(auth)}};
+ const beat=()=>setDoc(doc(db,'presence',me.uid),{n:me.name,t:Date.now()}).catch(()=>{});beat();beatT=setInterval(beat,20000);
+ pUn=onSnapshot(collection(db,'presence'),s=>{online=s.docs.map(d=>d.data()).filter(x=>Date.now()-x.t<50000);$('#on').textContent='\u{1F7E2} '+online.length+' online';Object.values(W).forEach(w=>w.onp&&w.onp())});
+ openWin('home');
+}
+$('#st').onclick=e=>{e.stopPropagation();const m=$('#sm');m.style.display=m.style.display==='block'?'none':'block'};
+document.addEventListener('click',()=>$('#sm').style.display='none');
+$('#tasks').onclick=e=>{const k=e.target.closest('[data-t]')?.dataset.t;if(!k)return;const w=W[k];
+ if(w.el.style.display==='none'||act!==k){w.el.style.display='flex';foc(k)}else{w.el.style.display='none';act=null;bar()}};
+function bar(){$('#tasks').innerHTML=Object.keys(W).map(k=>`<div class="task ${act===k&&W[k].el.style.display!=='none'?'on':''}" data-t="${k}">${D[k][0]} ${D[k][1]}</div>`).join('')}
+function foc(k){act=k;W[k].el.style.zIndex=++z;bar()}
+function closeW(k){const w=W[k];if(!w)return;w.un.forEach(f=>f());w.u2&&w.u2();w.el.remove();delete W[k];if(act===k)act=null;bar()}
+function openWin(k){
+ if(W[k]){W[k].el.style.display='flex';foc(k);return}
+ const n=Object.keys(W).length,el=document.createElement('div');el.className='win';
+ el.style.cssText=`left:${100+n*28}px;top:${20+n*28}px;width:min(600px,96vw);height:min(460px,88vh)`;
+ el.innerHTML=`<div class="tb"><span>${D[k][0]} ${D[k][1]}</span><i data-a="m">_</i><i data-a="x2">&#9633;</i><i data-a="x">X</i></div><div class="wb"></div>`;
+ $('#desk').appendChild(el);const w=W[k]={el,un:[]},tb=$('.tb',el);
+ el.addEventListener('pointerdown',()=>foc(k));
+ tb.onpointerdown=e=>{if(e.target.dataset.a||innerWidth<700||el.classList.contains('mx'))return;
+  const ox=e.clientX-el.offsetLeft,oy=e.clientY-el.offsetTop;tb.setPointerCapture(e.pointerId);
+  tb.onpointermove=m=>{el.style.left=Math.max(-300,Math.min(innerWidth-80,m.clientX-ox))+'px';el.style.top=Math.max(0,Math.min(innerHeight-70,m.clientY-oy))+'px'};
+  tb.onpointerup=()=>{tb.onpointermove=null}};
+ tb.onclick=e=>{const a=e.target.dataset.a;if(a==='m'){el.style.display='none';act=null;bar()}if(a==='x2')el.classList.toggle('mx');if(a==='x')closeW(k)};
+ V[k]($('.wb',el),w,k);foc(k);
+}
+function keep(b,f){const s={};b.querySelectorAll('[data-k]').forEach(e=>s[e.dataset.k]=e.value);const a=document.activeElement?.dataset?.k;f();
+ b.querySelectorAll('[data-k]').forEach(e=>{if(s[e.dataset.k]!=null)e.value=s[e.dataset.k]});if(a)b.querySelector(`[data-k="${a}"]`)?.focus()}
+const isAdmin=()=>me.role==='admin';
+
+/* ---------- Window contents ---------- */
+const V={};
+V.home=b=>{b.innerHTML=`<marquee>*** Welcome ${esc(me.name)}! Buy, sell, chat and study together ***</marquee><h2>Welcome to ISS Student Zone!</h2>
+<p>Click the icons on the left (or the Start menu) to open windows. Drag them around by the blue bar!</p>
+<div class="card"><b>&#128722; Marketplace</b> - sell old books, uniforms and gadgets with a photo.<br><b>&#128172; Chat Rooms</b> - live chat with students who are online.<br><b>&#128221; Exam Talk</b> - tips and doubts.<br><b>&#128218; Homework Help</b> - ask and answer.</div>
+<p>&#128679; <b>Be kind &amp; be safe:</b> no bullying, never share your address or password, and do swaps only at school.</p>`};
+
+V.market=(b,w)=>{
+ b.innerHTML=`<h2>Student Marketplace</h2><div class="card"><b>&#128247; Sell something</b><input class="t" maxlength="80" placeholder="What are you selling?">
+ <div class="row"><input class="p" type="number" min="0" step="0.1" placeholder="Price (OMR)"><input class="f" type="file" accept="image/*"></div>
+ <textarea class="d" rows="2" maxlength="300" placeholder="Condition, class, details..."></textarea><button class="sell">Post item</button> <span class="pv"></span></div><div class="grid list"></div>`;
+ const q=s=>$(s,b);
+ q('.f').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=x=>{const i=new Image();i.onload=()=>{const s=Math.min(1,360/i.width),c=document.createElement('canvas');c.width=i.width*s;c.height=i.height*s;c.getContext('2d').drawImage(i,0,0,c.width,c.height);w.photo=c.toDataURL('image/jpeg',.6);q('.pv').textContent='Photo ready \u2714'};i.src=x.target.result};r.readAsDataURL(f)};
+ q('.sell').onclick=async()=>{const t=clean(q('.t').value.trim());if(!t)return alert('Add a title!');
+  try{await addDoc(collection(db,'items'),{t,p:q('.p').value.slice(0,8),d:clean(q('.d').value.trim()),img:w.photo||'',uid:me.uid,u:me.name,c:me.cls||'',ts:serverTimestamp()});
+   w.photo='';['.t','.p','.d','.f'].forEach(s=>q(s).value='');q('.pv').textContent=''}catch(e){alert('Could not post: '+e.code)}};
+ q('.list').onclick=e=>{const d=e.target.dataset;if('c' in d)openWin('chat');if(d.del&&confirm('Remove this item?'))deleteDoc(doc(db,'items',d.del))};
+ w.un.push(onSnapshot(query(collection(db,'items'),orderBy('ts','desc'),limit(60)),s=>{
+  q('.list').innerHTML=s.docs.map(d=>{const x=d.data();return `<div class="card">${okImg(x.img)?`<img src="${x.img}">`:''}<b>${esc(x.t)}</b><div class="price">OMR ${esc(x.p||'?')}</div><small>${esc(x.d)}</small><br><span class="tag">${esc(x.u)} ${esc(x.c)}</span><br><button data-c>Chat</button>${x.uid===me.uid||isAdmin()?`<button data-del="${d.id}">Remove</button>`:''}</div>`}).join('')||'<p>Nothing yet - be the first to sell!</p>'}))};
+
+V.chat=(b,w)=>{
+ w.room='General';
+ b.innerHTML=`<h2>Chat Rooms</h2><select class="rm">${['General','Market Talk','Class Chat','Study Hall'].map(r=>`<option>${r}</option>`).join('')}</select>
+ <div class="msgs"></div><div class="row"><input class="cm" maxlength="300" placeholder="Type a message and press Enter..."><button class="snd">Send</button></div><div class="card"><b>&#128994; Online now</b><div class="ol"></div></div>`;
+ const q=s=>$(s,b);
+ const sub=()=>{w.u2&&w.u2();w.u2=onSnapshot(query(collection(db,'rooms',w.room,'msgs'),orderBy('ts','desc'),limit(60)),s=>{
+  const m=q('.msgs'),bt=m.scrollTop+m.clientHeight>=m.scrollHeight-30;
+  m.innerHTML=s.docs.reverse().map(d=>{const x=d.data();return `<div><b style="color:${x.uid===me.uid?'#0a3fa8':'#a03'}">${esc(x.u)}:</b> ${esc(x.m)} ${isAdmin()?`<a data-del="${d.id}">&#10006;</a>`:''}</div>`}).join('')||'<i>No messages yet. Say hi!</i>';
+  if(bt)m.scrollTop=m.scrollHeight})};
+ const send=async()=>{const t=clean(q('.cm').value.trim());if(!t)return;q('.cm').value='';
+  try{await addDoc(collection(db,'rooms',w.room,'msgs'),{u:me.name,uid:me.uid,m:t,ts:serverTimestamp()})}catch(e){alert('Could not send: '+e.code)}};
+ q('.snd').onclick=send;q('.cm').onkeydown=e=>e.key==='Enter'&&send();
+ q('.rm').onchange=e=>{w.room=e.target.value;sub()};
+ q('.msgs').onclick=e=>{const id=e.target.dataset.del;id&&deleteDoc(doc(db,'rooms',w.room,'msgs',id))};
+ w.onp=()=>{q('.ol').innerHTML=online.map(x=>`<span class="dot">&#9679;</span> ${esc(x.n)}`).join('<br>')};w.onp();sub()};
+
+V.exam=V.hw=(b,w,bid)=>{const ex=bid==='exam';
+ b.innerHTML=`<h2>${ex?'Exam Discussion':'Homework Help'}</h2><div class="card"><b>${ex?'Share a tip or ask a doubt':'Ask a homework question'}</b>
+ <select class="sb">${['Maths','Science','English','Hindi','Malayalam','Social','Computer','Other'].map(s=>`<option>${s}</option>`).join('')}</select>
+ <textarea class="tx" rows="2" maxlength="800" placeholder="Type here..."></textarea><button class="post">Post</button></div><div class="list"></div>`;
+ const q=s=>$(s,b);
+ q('.post').onclick=async()=>{const t=clean(q('.tx').value.trim());if(!t)return;
+  try{await addDoc(collection(db,'boards',bid,'posts'),{u:me.name,uid:me.uid,c:me.cls||'',s:q('.sb').value,t,r:[],ts:serverTimestamp()});q('.tx').value=''}catch(e){alert('Could not post: '+e.code)}};
+ q('.list').onclick=async e=>{const d=e.target.dataset;
+  if(d.dp&&confirm('Delete this post?'))deleteDoc(doc(db,'boards',bid,'posts',d.dp));
+  if(d.rp){const i=q(`[data-k="r${d.rp}"]`),t=clean(i.value.trim());if(!t)return;i.value='';
+   try{await updateDoc(doc(db,'boards',bid,'posts',d.rp),{r:arrayUnion({u:me.name,t})})}catch(x){alert('Could not reply: '+x.code)}}};
+ w.un.push(onSnapshot(query(collection(db,'boards',bid,'posts'),orderBy('ts','desc'),limit(40)),s=>keep(b,()=>{
+  q('.list').innerHTML=s.docs.map(d=>{const x=d.data();return `<div class="card"><span class="tag">${esc(x.s)}</span> <b>${esc(x.u)}</b> <small>${esc(x.c)}</small> ${x.uid===me.uid||isAdmin()?`<a data-dp="${d.id}">[delete]</a>`:''}<p>${esc(x.t)}</p>
+  ${(x.r||[]).map(r=>`<div class="rep"><b>${esc(r.u)}:</b> ${esc(r.t)}</div>`).join('')}<div class="row"><input data-k="r${d.id}" maxlength="400" placeholder="Reply..."><button data-rp="${d.id}">Reply</button></div></div>`}).join('')||'<p>No posts yet.</p>'})))};
+</script></body></html>
