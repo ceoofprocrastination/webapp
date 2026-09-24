@@ -177,4 +177,13 @@ V.exam=V.hw=(b,w,bid)=>{const ex=bid==='exam';
  w.un.push(onSnapshot(query(collection(db,'boards',bid,'posts'),orderBy('ts','desc'),limit(40)),s=>keep(b,()=>{
   q('.list').innerHTML=s.docs.map(d=>{const x=d.data();return `<div class="card"><span class="tag">${esc(x.s)}</span> <b>${esc(x.u)}</b> <small>${esc(x.c)}</small> ${x.uid===me.uid||isAdmin()?`<a data-dp="${d.id}">[delete]</a>`:''}<p>${esc(x.t)}</p>
   ${(x.r||[]).map(r=>`<div class="rep"><b>${esc(r.u)}:</b> ${esc(r.t)}</div>`).join('')}<div class="row"><input data-k="r${d.id}" maxlength="400" placeholder="Reply..."><button data-rp="${d.id}">Reply</button></div></div>`}).join('')||'<p>No posts yet.</p>'})))};
+ // --- FIX: Allow typing in inputs by stopping window dragging interference ---
+window.addEventListener('pointerdown', (e) => {
+  const targetTag = e.target.tagName;
+  // If clicking an input, textarea, or select box, stop the dragging code from blocking it
+  if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(targetTag)) {
+    e.stopPropagation(); // Stops the click from bubbling up to dragging functions
+  }
+}, { capture: true }); // Captures the click first before any other code can block it
+
 </script></body></html>
