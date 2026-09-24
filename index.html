@@ -150,16 +150,19 @@ V.market=(b,w)=>{
 V.chat=(b,w)=>{
  w.room='General';
  b.innerHTML=`<h2>Chat Rooms</h2><select class="rm">${['General','Market Talk','Class Chat','Study Hall'].map(r=>`<option>${r}</option>`).join('')}</select>
- <div class="msgs"></div><div class="row"><input class="cm" maxlength="300" placeholder="Type a message and press Enter..."><button class="snd">Send</button></div><div class="card"><b>&#128994; Online now</b><div class="ol"></div></div>`;
+ <div class="msgs"></div><div class="row"><input class="cm" maxlength="300" placeholder="Type a message and press Enter..."><button class="snd">Send</button></div><p class="err cerr"></p><div class="card"><b>&#128994; Online now</b><div class="ol"></div></div>`;
  const q=s=>$(s,b);
  const sub=()=>{w.u2&&w.u2();w.u2=onSnapshot(query(collection(db,'rooms',w.room,'msgs'),orderBy('ts','desc'),limit(60)),s=>{
   const m=q('.msgs'),bt=m.scrollTop+m.clientHeight>=m.scrollHeight-30;
   m.innerHTML=s.docs.reverse().map(d=>{const x=d.data();return `<div><b style="color:${x.uid===me.uid?'#0a3fa8':'#a03'}">${esc(x.u)}:</b> ${esc(x.m)} ${isAdmin()?`<a data-del="${d.id}">&#10006;</a>`:''}</div>`}).join('')||'<i>No messages yet. Say hi!</i>';
-  if(bt)m.scrollTop=m.scrollHeight})};
- const send=async()=>{const t=clean(q('.cm').value.trim());if(!t)return;q('.cm').value='';
-  try{await addDoc(collection(db,'rooms',w.room,'msgs'),{u:me.name,uid:me.uid,m:t,ts:serverTimestamp()})}catch(e){alert('Could not send: '+e.code)}};
+  if(bt)m.scrollTop=m.scrollHeight},e=>{q('.cerr').textContent='Could not load messages: '+e.code})};
+ const send=async()=>{const t=clean(q('.cm').value.trim());if(!t)return;
+  q('.cerr').textContent='';q('.snd').disabled=true;
+  try{await addDoc(collection(db,'rooms',w.room,'msgs'),{u:me.name,uid:me.uid,m:t,ts:serverTimestamp()});q('.cm').value=''}
+  catch(e){q('.cerr').textContent='Could not send: '+e.code}
+  finally{q('.snd').disabled=false;q('.cm').focus()}};
  q('.snd').onclick=send;q('.cm').onkeydown=e=>e.key==='Enter'&&send();
- q('.rm').onchange=e=>{w.room=e.target.value;sub()};
+ q('.rm').onchange=e=>{w.room=e.target.value;q('.cerr').textContent='';sub()};
  q('.msgs').onclick=e=>{const id=e.target.dataset.del;id&&deleteDoc(doc(db,'rooms',w.room,'msgs',id))};
  w.onp=()=>{q('.ol').innerHTML=online.map(x=>`<span class="dot">&#9679;</span> ${esc(x.n)}`).join('<br>')};w.onp();sub()};
 
@@ -177,11 +180,5 @@ V.exam=V.hw=(b,w,bid)=>{const ex=bid==='exam';
  w.un.push(onSnapshot(query(collection(db,'boards',bid,'posts'),orderBy('ts','desc'),limit(40)),s=>keep(b,()=>{
   q('.list').innerHTML=s.docs.map(d=>{const x=d.data();return `<div class="card"><span class="tag">${esc(x.s)}</span> <b>${esc(x.u)}</b> <small>${esc(x.c)}</small> ${x.uid===me.uid||isAdmin()?`<a data-dp="${d.id}">[delete]</a>`:''}<p>${esc(x.t)}</p>
   ${(x.r||[]).map(r=>`<div class="rep"><b>${esc(r.u)}:</b> ${esc(r.t)}</div>`).join('')}<div class="row"><input data-k="r${d.id}" maxlength="400" placeholder="Reply..."><button data-rp="${d.id}">Reply</button></div></div>`}).join('')||'<p>No posts yet.</p>'})))};
-// Force all input fields inside chatrooms to accept typing and ignore window dragging blocks
-window.addEventListener('pointerdown', (e) => {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-    e.stopPropagation(); // Stops the window desktop from intercepting your click
-  }
-}, { capture: true });
-
 </script></body></html>
+
