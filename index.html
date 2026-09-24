@@ -177,19 +177,11 @@ V.exam=V.hw=(b,w,bid)=>{const ex=bid==='exam';
  w.un.push(onSnapshot(query(collection(db,'boards',bid,'posts'),orderBy('ts','desc'),limit(40)),s=>keep(b,()=>{
   q('.list').innerHTML=s.docs.map(d=>{const x=d.data();return `<div class="card"><span class="tag">${esc(x.s)}</span> <b>${esc(x.u)}</b> <small>${esc(x.c)}</small> ${x.uid===me.uid||isAdmin()?`<a data-dp="${d.id}">[delete]</a>`:''}<p>${esc(x.t)}</p>
   ${(x.r||[]).map(r=>`<div class="rep"><b>${esc(r.u)}:</b> ${esc(r.t)}</div>`).join('')}<div class="row"><input data-k="r${d.id}" maxlength="400" placeholder="Reply..."><button data-rp="${d.id}">Reply</button></div></div>`}).join('')||'<p>No posts yet.</p>'})))};
-// --- FORCE INPUTS TO WORK ---
-// 1. Force focus on click
+// Force all input fields inside chatrooms to accept typing and ignore window dragging blocks
 window.addEventListener('pointerdown', (e) => {
-  if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
-    e.stopPropagation();
-    setTimeout(() => e.target.focus(), 50); // Force the browser to focus it anyway
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    e.stopPropagation(); // Stops the window desktop from intercepting your click
   }
 }, { capture: true });
 
-// 2. Prevent any script from killing keyboard input
-window.addEventListener('keydown', (e) => {
-  if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
-    e.stopPropagation(); // Stop window shortcuts or desktop scripts from killing your keys
-  }
-}, { capture: true });
 </script></body></html>
