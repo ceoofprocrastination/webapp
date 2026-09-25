@@ -28,6 +28,10 @@ button:hover{box-shadow:inset 0 0 0 2px #f8b330}
 .msgs{height:220px;overflow:auto;background:#fff;border:2px inset #ece9d8;padding:6px;margin:6px 0 4px}
 .row{display:flex;gap:6px}.row>*{flex:1}.row button{flex:0}
 .dot{color:#2a9d2a}.rep{margin-left:12px;border-left:3px solid #7ba2e7;padding-left:6px}
+.qr{background:#eef3ff;border-left:3px solid #7ba2e7;padding:2px 6px;margin:2px 0 2px 20px;font-size:10px;color:#333}
+.ry{background:#fff8dc;border:1px solid #d8c98a;padding:4px 6px;font-size:11px;display:flex;align-items:center;gap:6px}
+.ry span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+a[data-rp2]{color:#0a3fa8;cursor:pointer;font-size:10px}
 a[data-del],a[data-dp]{color:#c00;cursor:pointer}
 .err{color:#c00;font-weight:bold}
 marquee{background:#000;color:#0f0;font-family:monospace;padding:2px}
@@ -72,7 +76,7 @@ const MSG={'auth/email-already-in-use':'Account already exists - please sign in.
 function authView(){
  $('#desk').innerHTML=`<div style="display:flex;height:100%;align-items:center;justify-content:center;padding:8px;overflow:auto"><div class="win auth"><div class="tb"><span>Welcome to ISS Student Zone</span></div><div class="wb" style="padding:16px">
  <h2>${mode==='signin'?'Sign In':'Create Account'}</h2><p>&#127979; For students of Indian School Sohar</p>
- ${mode==='signup'?'<label>Your name</label><input id="nm" maxlength="30"><label>Class</label><select id="cl">'+[5,6,7,8,9,10,11,12].map(c=>'<option>Class '+c+'</option>').join('')+'</select>':''}
+ ${mode==='signup'?'<label>Your name</label><input id="nm" maxlength="30"><label>Choose a username (shown to others, letters/numbers/underscore only)</label><input id="un" maxlength="20" placeholder="e.g. aki_2010"><label>Class</label><select id="cl">'+[5,6,7,8,9,10,11,12].map(c=>'<option>Class '+c+'</option>').join('')+'</select>':''}
  <label>Email or phone number</label><input id="id" placeholder="you@mail.com or 9XXXXXXX"><label>Password</label><input id="pw" type="password">
  <p class="err">${err}</p><button id="go">${mode==='signin'?'Sign In':'Sign Up'}</button> <button id="sw">${mode==='signin'?'New? Sign up':'Have account? Sign in'}</button></div></div></div>`;
  $('#sm').innerHTML='';$('#tasks').innerHTML='';$('#on').textContent='';
@@ -82,14 +86,20 @@ function authView(){
   if(!e)return bad('Enter a valid email or phone number (Oman: 8 digits).');
   if(pw.length<6)return bad('Password needs 6+ characters.');
   try{if(mode==='signup'){const n=$('#nm').value.trim();if(!n)return bad('Please enter your name.');
+    const un=$('#un').value.trim().toLowerCase();
+    if(!/^[a-z0-9_]{3,20}$/.test(un))return bad('Username must be 3-20 characters: letters, numbers, underscore only.');
+    try{const taken=await getDoc(doc(db,'usernames',un));if(taken.exists())return bad('That username is already taken - try another.')}catch(x){}
     const raw=$('#id').value.trim();const realEmail=raw.includes('@')?raw.toLowerCase():'';
-    sessionStorage.setItem('np',JSON.stringify({n:clean(n),c:$('#cl').value,email:realEmail}));await createUserWithEmailAndPassword(auth,e,pw)}
+    sessionStorage.setItem('np',JSON.stringify({n:clean(n),un,c:$('#cl').value,email:realEmail}));await createUserWithEmailAndPassword(auth,e,pw)}
    else await signInWithEmailAndPassword(auth,e,pw)}catch(x){bad(MSG[x.code]||'Error: '+x.code)}}
 }
 function boot(){onAuthStateChanged(auth,async u=>{
  if(!u){me=null;closeAll();authView();return}
  const r=doc(db,'users',u.uid);let s=await getDoc(r);
- if(!s.exists()){const np=JSON.parse(sessionStorage.getItem('np')||'{}');await setDoc(r,{name:np.n||'Student',cls:np.c||'',email:np.email||'',role:'student',ts:serverTimestamp()});s=await getDoc(r)}
+ if(!s.exists()){const np=JSON.parse(sessionStorage.getItem('np')||'{}');
+  await setDoc(r,{name:np.un||np.n||'Student',realName:np.n||'',cls:np.c||'',email:np.email||'',role:'student',ts:serverTimestamp()});
+  if(np.un)setDoc(doc(db,'usernames',np.un),{uid:u.uid}).catch(()=>{});
+  s=await getDoc(r)}
  me={uid:u.uid,...s.data()};desktop()})}
 function closeAll(){Object.keys(W).forEach(closeW);pUn&&pUn();cUn&&cUn();clearInterval(beatT);$('#bdg').style.display='none'}
 function isUnread(c){if(!c.lastUid||c.lastUid===me.uid)return false;
@@ -124,9 +134,11 @@ function spawnWindow(k,icon,title,build){
  $('#desk').appendChild(el);const w=W[k]={el,un:[],icon,title},tb=$('.tb',el);
  el.addEventListener('pointerdown',()=>foc(k));
  tb.onpointerdown=e=>{if(e.target.dataset.a||innerWidth<700||el.classList.contains('mx'))return;
-  const ox=e.clientX-el.offsetLeft,oy=e.clientY-el.offsetTop;tb.setPointerCapture(e.pointerId);
-  tb.onpointermove=m=>{el.style.left=Math.max(-300,Math.min(innerWidth-80,m.clientX-ox))+'px';el.style.top=Math.max(0,Math.min(innerHeight-70,m.clientY-oy))+'px'};
-  tb.onpointerup=()=>{tb.onpointermove=null}};
+  const ox=e.clientX-el.offsetLeft,oy=e.clientY-el.offsetTop;
+  const move=mv=>{el.style.left=Math.max(-300,Math.min(innerWidth-80,mv.clientX-ox))+'px';el.style.top=Math.max(0,Math.min(innerHeight-70,mv.clientY-oy))+'px'};
+  const up=()=>{try{tb.releasePointerCapture(e.pointerId)}catch(x){}tb.removeEventListener('pointermove',move);tb.removeEventListener('pointerup',up);tb.removeEventListener('pointercancel',up)};
+  try{tb.setPointerCapture(e.pointerId)}catch(x){}
+  tb.addEventListener('pointermove',move);tb.addEventListener('pointerup',up);tb.addEventListener('pointercancel',up)};
  tb.onclick=e=>{const a=e.target.dataset.a;if(a==='m'){el.style.display='none';act=null;bar()}if(a==='x2')el.classList.toggle('mx');if(a==='x')closeW(k)};
  try{build($('.wb',el),w)}catch(err){$('.wb',el).innerHTML='<p class="err">Something broke loading this window:<br>'+esc(err.message)+'</p><p>Please screenshot this and send it over.</p>';console.error(err)}
  foc(k);return w;
@@ -171,18 +183,21 @@ async function toggleWish(id,have){try{await updateDoc(doc(db,'items',id),{inter
 
 V.chat=(b,w)=>{
  w.room='General';
- b.innerHTML=`<h2>Chat Rooms</h2><select class="rm">${['General','Market Talk','Class Chat','Study Hall'].map(r=>`<option>${r}</option>`).join('')}</select>
- <div class="msgs"></div><div class="row"><input class="cm" maxlength="300" placeholder="Type a message and press Enter..."><button class="snd">Send</button></div><div class="card"><b>&#128994; Online now</b><div class="ol"></div></div>`;
+ b.innerHTML=`<h2>Chat Rooms</h2><select class="rm">${['General','Chat','Market Talk','Class Chat','Study Hall'].map(r=>`<option>${r}</option>`).join('')}</select>
+ <div class="msgs"></div><div class="ry" style="display:none"></div><div class="row"><input class="cm" maxlength="300" placeholder="Type a message and press Enter..."><button class="snd">Send</button></div><div class="card"><b>&#128994; Online now</b><div class="ol"></div></div>`;
  const q=s=>$(s,b);
  const sub=()=>{w.u2&&w.u2();w.u2=onSnapshot(query(collection(db,'rooms',w.room,'msgs'),orderBy('ts','desc'),limit(60)),s=>{
   const m=q('.msgs'),bt=m.scrollTop+m.clientHeight>=m.scrollHeight-30;
-  m.innerHTML=s.docs.reverse().map(d=>{const x=d.data();return `<div><b style="color:${x.uid===me.uid?'#0a3fa8':'#a03'}">${esc(x.u)}:</b> ${esc(x.m)} ${isAdmin()?`<a data-del="${d.id}">&#10006;</a>`:''}</div>`}).join('')||'<i>No messages yet. Say hi!</i>';
+  m.innerHTML=s.docs.reverse().map(d=>{const x=d.data();return `${x.rt?`<div class="qr">&#8618; ${esc(x.rt.u)}: ${esc((x.rt.m||'').slice(0,60))}</div>`:''}<div><b style="color:${x.uid===me.uid?'#0a3fa8':'#a03'}">${esc(x.u)}:</b> ${esc(x.m)} <a data-rp2="${esc(x.u)}" data-rm2="${esc(x.m).replace(/"/g,'&quot;')}">&#8617; Reply</a> ${isAdmin()?`<a data-del="${d.id}">&#10006;</a>`:''}</div>`}).join('')||'<i>No messages yet. Say hi!</i>';
   if(bt)m.scrollTop=m.scrollHeight},e=>{q('.msgs').innerHTML='<p class="err">Could not load messages: '+e.code+' - check your Firestore rules are published.</p>'})};
  const send=async()=>{const t=clean(q('.cm').value.trim());if(!t)return;q('.cm').value='';
-  try{await addDoc(collection(db,'rooms',w.room,'msgs'),{u:me.name,uid:me.uid,m:t,ts:serverTimestamp()})}catch(e){alert('Could not send: '+e.code)}};
+  const doc_={u:me.name,uid:me.uid,m:t,ts:serverTimestamp()};if(w.rt)doc_.rt=w.rt;w.rt=null;q('.ry').style.display='none';
+  try{await addDoc(collection(db,'rooms',w.room,'msgs'),doc_)}catch(e){alert('Could not send: '+e.code)}};
  q('.snd').onclick=send;q('.cm').onkeydown=e=>e.key==='Enter'&&send();
  q('.rm').onchange=e=>{w.room=e.target.value;sub()};
- q('.msgs').onclick=e=>{const id=e.target.dataset.del;id&&deleteDoc(doc(db,'rooms',w.room,'msgs',id))};
+ q('.msgs').onclick=e=>{const id=e.target.dataset.del;id&&deleteDoc(doc(db,'rooms',w.room,'msgs',id));
+  const ru=e.target.dataset.rp2;if(ru){w.rt={u:ru,m:e.target.dataset.rm2};q('.ry').style.display='flex';q('.ry').innerHTML=`<span>&#8618; Replying to ${esc(ru)}: ${esc(w.rt.m.slice(0,50))}</span><a data-cancel>&#10006;</a>`;q('.cm').focus()}};
+ q('.ry').onclick=e=>{if(e.target.dataset.cancel!==undefined){w.rt=null;q('.ry').style.display='none'}};
  w.onp=()=>{q('.ol').innerHTML=online.map(x=>`<span class="dot">&#9679;</span> ${esc(x.n)}`).join('<br>')};w.onp();sub()};
 
 function renderDM(b,w,convId,otherName){
