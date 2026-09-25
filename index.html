@@ -73,7 +73,7 @@ function authView(){
  $('#desk').innerHTML=`<div style="display:flex;height:100%;align-items:center;justify-content:center;padding:8px;overflow:auto"><div class="win auth"><div class="tb"><span>Welcome to ISS Student Zone</span></div><div class="wb" style="padding:16px">
  <h2>${mode==='signin'?'Sign In':'Create Account'}</h2><p>&#127979; For students of Indian School Sohar</p>
  ${mode==='signup'?'<label>Your name</label><input id="nm" maxlength="30"><label>Class</label><select id="cl">'+[5,6,7,8,9,10,11,12].map(c=>'<option>Class '+c+'</option>').join('')+'</select>':''}
- <label>Email or phone number</label><input id="id" placeholder="you@mail.com or 9XXXXXXX"><label>Password</label><input id="pw" type="password">
+ <label>Email or phone number</label><input id="id" placeholder="Use your school email for ex: you@indianschoolsohar.com"><label>Password</label><input id="pw" type="password">
  <p class="err">${err}</p><button id="go">${mode==='signin'?'Sign In':'Sign Up'}</button> <button id="sw">${mode==='signin'?'New? Sign up':'Have account? Sign in'}</button></div></div></div>`;
  $('#sm').innerHTML='';$('#tasks').innerHTML='';$('#on').textContent='';
  $('#sw').onclick=()=>{mode=mode==='signin'?'signup':'signin';err='';authView()};
