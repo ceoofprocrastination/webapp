@@ -62,7 +62,7 @@ const $=(s,r=document)=>r.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clean=t=>['fuck','shit','bitch','sex'].reduce((s,w)=>s.replace(new RegExp(w,'gi'),'***'),t); // extend this list!
 const okImg=s=>/^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(s||'');
-const D={home:['\u{1F3E0}','Home'],market:['\u{1F6D2}','Marketplace'],chat:['\u{1F4AC}','Chat Rooms'],inbox:['\u{1F4EC}','Messages'],exam:['\u{1F4DD}','Exam Talk'],hw:['\u{1F4DA}','Homework Help']};
+const D={home:['\u{1F3E0}','Home'],market:['\u{1F6D2}','Marketplace'],chat:['\u{1F4AC}','Chat'],inbox:['\u{1F4EC}','Messages'],exam:['\u{1F4DD}','Exam Talk'],hw:['\u{1F4DA}','Homework Help']};
 let auth,db,me=null,mode='signin',err='',online=[],convs=[],cUn=null,W={},act=null,z=10,pUn=null,beatT=null;
 
 setInterval(()=>$('#ck').textContent=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),1000);
@@ -157,7 +157,7 @@ const isAdmin=()=>me.role==='admin';
 const V={};
 V.home=b=>{b.innerHTML=`<marquee>*** Welcome ${esc(me.name)}! Buy, sell, chat and study together ***</marquee><h2>Welcome to ISS Student Zone!</h2>
 <p>Click the icons on the left (or the Start menu) to open windows. Drag them around by the blue bar!</p>
-<div class="card"><b>&#128722; Marketplace</b> - sell old books, uniforms and gadgets with a photo.<br><b>&#128172; Chat Rooms</b> - live chat with students who are online.<br><b>&#128221; Exam Talk</b> - tips and doubts.<br><b>&#128218; Homework Help</b> - ask and answer.</div>
+<div class="card"><b>&#128722; Marketplace</b> - sell old books, uniforms and gadgets with a photo.<br><b>&#128172; Chat</b> - post messages and reply to each other.<br><b>&#128221; Exam Talk</b> - tips and doubts.<br><b>&#128218; Homework Help</b> - ask and answer.</div>
 <p>&#128679; <b>Be kind &amp; be safe:</b> no bullying, never share your address or password, and do swaps only at school.</p>`};
 
 V.market=(b,w)=>{
@@ -181,24 +181,19 @@ V.market=(b,w)=>{
    ${mine||isAdmin()?`<button data-del="${d.id}">Remove</button>`:''}</div>`}).join('')||'<p>Nothing yet - be the first to sell!</p>'}))};
 async function toggleWish(id,have){try{await updateDoc(doc(db,'items',id),{interested:have?arrayRemove(me.uid):arrayUnion(me.uid)})}catch(e){alert('Could not update: '+e.code)}}
 
-V.chat=(b,w)=>{
- w.room='General';
- b.innerHTML=`<h2>Chat Rooms</h2><select class="rm">${['General','Chat','Market Talk','Class Chat','Study Hall'].map(r=>`<option>${r}</option>`).join('')}</select>
- <div class="msgs"></div><div class="ry" style="display:none"></div><div class="row"><input class="cm" maxlength="300" placeholder="Type a message and press Enter..."><button class="snd">Send</button></div><div class="card"><b>&#128994; Online now</b><div class="ol"></div></div>`;
+V.chat=(b,w,bid)=>{
+ b.innerHTML=`<h2>Chat</h2><div class="card"><b>Say something to everyone</b>
+ <textarea class="tx" rows="2" maxlength="800" placeholder="Type here..."></textarea><button class="post">Post</button></div><div class="list"></div>`;
  const q=s=>$(s,b);
- const sub=()=>{w.u2&&w.u2();w.u2=onSnapshot(query(collection(db,'rooms',w.room,'msgs'),orderBy('ts','desc'),limit(60)),s=>{
-  const m=q('.msgs'),bt=m.scrollTop+m.clientHeight>=m.scrollHeight-30;
-  m.innerHTML=s.docs.reverse().map(d=>{const x=d.data();return `${x.rt?`<div class="qr">&#8618; ${esc(x.rt.u)}: ${esc((x.rt.m||'').slice(0,60))}</div>`:''}<div><b style="color:${x.uid===me.uid?'#0a3fa8':'#a03'}">${esc(x.u)}:</b> ${esc(x.m)} <a data-rp2="${esc(x.u)}" data-rm2="${esc(x.m).replace(/"/g,'&quot;')}">&#8617; Reply</a> ${isAdmin()?`<a data-del="${d.id}">&#10006;</a>`:''}</div>`}).join('')||'<i>No messages yet. Say hi!</i>';
-  if(bt)m.scrollTop=m.scrollHeight},e=>{q('.msgs').innerHTML='<p class="err">Could not load messages: '+e.code+' - check your Firestore rules are published.</p>'})};
- const send=async()=>{const t=clean(q('.cm').value.trim());if(!t)return;q('.cm').value='';
-  const doc_={u:me.name,uid:me.uid,m:t,ts:serverTimestamp()};if(w.rt)doc_.rt=w.rt;w.rt=null;q('.ry').style.display='none';
-  try{await addDoc(collection(db,'rooms',w.room,'msgs'),doc_)}catch(e){alert('Could not send: '+e.code)}};
- q('.snd').onclick=send;q('.cm').onkeydown=e=>e.key==='Enter'&&send();
- q('.rm').onchange=e=>{w.room=e.target.value;sub()};
- q('.msgs').onclick=e=>{const id=e.target.dataset.del;id&&deleteDoc(doc(db,'rooms',w.room,'msgs',id));
-  const ru=e.target.dataset.rp2;if(ru){w.rt={u:ru,m:e.target.dataset.rm2};q('.ry').style.display='flex';q('.ry').innerHTML=`<span>&#8618; Replying to ${esc(ru)}: ${esc(w.rt.m.slice(0,50))}</span><a data-cancel>&#10006;</a>`;q('.cm').focus()}};
- q('.ry').onclick=e=>{if(e.target.dataset.cancel!==undefined){w.rt=null;q('.ry').style.display='none'}};
- w.onp=()=>{q('.ol').innerHTML=online.map(x=>`<span class="dot">&#9679;</span> ${esc(x.n)}`).join('<br>')};w.onp();sub()};
+ q('.post').onclick=async()=>{const t=clean(q('.tx').value.trim());if(!t)return;
+  try{await addDoc(collection(db,'boards',bid,'posts'),{u:me.name,uid:me.uid,c:me.cls||'',t,r:[],ts:serverTimestamp()});q('.tx').value=''}catch(e){alert('Could not post: '+e.code)}};
+ q('.list').onclick=async e=>{const d=e.target.dataset;
+  if(d.dp&&confirm('Delete this post?'))deleteDoc(doc(db,'boards',bid,'posts',d.dp));
+  if(d.rp){const i=q(`[data-k="r${d.rp}"]`),t=clean(i.value.trim());if(!t)return;i.value='';
+   try{await updateDoc(doc(db,'boards',bid,'posts',d.rp),{r:arrayUnion({u:me.name,t})})}catch(x){alert('Could not reply: '+x.code)}}};
+ w.un.push(onSnapshot(query(collection(db,'boards',bid,'posts'),orderBy('ts','desc'),limit(60)),s=>keep(b,()=>{
+  q('.list').innerHTML=s.docs.map(d=>{const x=d.data();return `<div class="card"><b>${esc(x.u)}</b> <small>${esc(x.c)}</small> ${x.uid===me.uid||isAdmin()?`<a data-dp="${d.id}">[delete]</a>`:''}<p>${esc(x.t)}</p>
+  ${(x.r||[]).map(r=>`<div class="rep"><b>${esc(r.u)}:</b> ${esc(r.t)}</div>`).join('')}<div class="row"><input data-k="r${d.id}" maxlength="400" placeholder="Reply..."><button data-rp="${d.id}">Reply</button></div></div>`}).join('')||'<p>No messages yet. Say hi!</p>'})))};
 
 function renderDM(b,w,convId,otherName){
  const otherUid=convId.split('_').find(u=>u!==me.uid);
